@@ -175,15 +175,16 @@ Resources:
           - |
             #!/bin/bash  
             sudo git clone https://github.com/rahul-yadav-hub/WordPress-CI-CD-AWS.git
-            sudo mv WordPress-CI-CD-AWS/* /var/www/rahul-wp.squareops.co.in/
+            sudo mkdir /var/www/wordpress
+            sudo mv WordPress-CI-CD-AWS/* /var/www/wordpress
             DB_NAME=${DB_NAME}
             DB_HOST=${DB_HOST}
             DB_USER=${DB_USER}
             DB_PASSWD=${DB_PASSWD}
-            sudo sed -i 's/database_name_here/'$DB_NAME'/' /var/www/rahul-wp.squareops.co.in/wp-config.php
-            sudo sed -i 's/username_here/'$DB_USER'/' /var/www/rahul-wp.squareops.co.in/wp-config.php
-            sudo sed -i 's/password_here/'$DB_PASSWD'/' /var/www/rahul-wp.squareops.co.in/wp-config.php
-            sudo sed -i 's/localhost/'$DB_HOST'/' /var/www/rahul-wp.squareops.co.in/wp-config.php
+            sudo sed -i 's/database_name_here/'$DB_NAME'/' /var/www/wordpress/wp-config.php
+            sudo sed -i 's/username_here/'$DB_USER'/' /var/www/wordpress/wp-config.php
+            sudo sed -i 's/password_here/'$DB_PASSWD'/' /var/www/wordpress/wp-config.php
+            sudo sed -i 's/localhost/'$DB_HOST'/' /var/www/wordpress/wp-config.php
           - DB_NAME: !ImportValue DB-NAME
             DB_HOST: !ImportValue DB-HOST
             DB_USER: !ImportValue DB-USER
