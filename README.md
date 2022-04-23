@@ -29,4 +29,17 @@ This CloudFormation template creates a ASG and LB to deploy the application.
 - Load Balancer
 - HTTP Listener
 - HTTPS listener
+## Features
+- Higly Available, Scalable and Secure Architecture
+- End-to-End Automated
+## Prerequisites
+- Must have an AMI with Nginx & Php-Fpm configured
+- Application should return 200 Status Code on some path for health checks
+- Must have certificate ARN of a Domain
+## Suggested Improvements
+- Add Backup for media content using S3 Bucket.
+- Add a Bastion or VPN server to administer application instances securely.
+- Add Secret Manager or SSM Paramtere store to store RDS credentials.
+
+
 
