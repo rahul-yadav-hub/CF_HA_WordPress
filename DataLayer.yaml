@@ -1,0 +1,172 @@
+#SSM parameter issue (SecureString)
+#Hide or secure passwd export
+
+AWSTemplateFormatVersion: "2010-09-09"
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "RDS General Configuration"
+        Parameters:
+          - DBName
+          - InitialDBName
+          - DBInstanceClass
+          - DeleteProtection
+      - Label:
+          default: "Database Configuration"
+        Parameters:
+          - StorageCapacity
+          - EngineType
+          - EngineVersion
+          - MasterUsername
+          - MasterUserPassword
+          - MaxAllocatedStorage
+      - Label:
+          default: "Backup Configuration"
+        Parameters:
+          - BackupRetentionPeriod
+
+    ParameterLabels:
+      DBName:
+        default: "Name Of RDS"
+      InitialDBName:
+        default: "Initial DB Name"
+      DBInstanceClass:
+        default: "Type of instance to use in RDS"
+      StorageCapacity:
+        default: "Storage Size"
+      BackupRetentionPeriod:
+        default: "Backup Retention Period"
+      DeleteProtection:
+        default: "Do you want Delete Protection"
+      EngineType:
+        default: "Engine Type for RDS"
+      EngineVersion:
+        default: "Engine Version for RDS"
+      MasterUsername:
+        default: "DB Master Username"
+      MasterUserPassword:
+        default: "DB Master User Password"
+      MaxAllocatedStorage:
+        default: "Max Storage under scaling"
+  
+Parameters:
+  DBName: 
+    Description: Name of the Database
+    Type: String
+  InitialDBName: 
+    Description: Initial DB Name to create
+    Type: String
+  DBInstanceClass: 
+    Default: db.t3.micro
+    Description: DB instance class
+    Type: String
+    ConstraintDescription: Must select a valid DB instance type.
+  StorageCapacity: 
+    Description: The size of the database (GiB)
+    Type: Number
+    MinValue: '20'
+    MaxValue: '65536'
+    ConstraintDescription: must be between 20 and 65536 GiB.
+  BackupRetentionPeriod: 
+    Description: Time period for which you want to reten backup
+    Type: String
+  DeleteProtection: 
+    Description: Do you want to enable delete protection
+    Type: String
+    Default: false
+  EngineType: 
+    Description: Engine Type of DB
+    Default: mysql
+    Type: String
+  EngineVersion: 
+    Description: Engine Version of DB
+    Default: 8.0.28
+    Type: String
+  MasterUsername: 
+    Description:  Username for MySQL database access
+    Type: String
+  MasterUserPassword: 
+    NoEcho: 'true'
+    Description: Password MySQL database access
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: must contain only alphanumeric characters.
+  MaxAllocatedStorage: 
+    Description: Maximum storage capacity on scaling
+    Type: Number
+
+
+Resources: 
+  DBSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup" 
+    Properties: 
+      DBSubnetGroupDescription: DB Subnet Group for RDS
+      SubnetIds: 
+        - !ImportValue PrivateSubnetID1
+        - !ImportValue PrivateSubnetID2
+      Tags: 
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-DB-Subnet-group
+
+  RDS: #No encryption
+    DependsOn: DBSubnetGroup
+    Type: AWS::RDS::DBInstance
+    Properties: 
+      AllocatedStorage: !Ref StorageCapacity #
+      BackupRetentionPeriod: !Ref BackupRetentionPeriod #
+      CopyTagsToSnapshot: true
+      DBInstanceClass: !Ref DBInstanceClass #
+      DBInstanceIdentifier: !Ref DBName #
+      DBName: !Ref InitialDBName #
+      DeleteAutomatedBackups: true #chnage it
+      DeletionProtection: !Ref DeleteProtection #
+      EnableCloudwatchLogsExports: 
+        - audit
+        - error
+        - general
+      Engine: !Ref EngineType #
+      EngineVersion: !Ref EngineVersion #
+      MasterUsername: !Ref MasterUsername #
+      MasterUserPassword: !Ref MasterUserPassword #
+      MaxAllocatedStorage: !Ref MaxAllocatedStorage #
+      MultiAZ: true
+      Port: "3306"
+      PreferredBackupWindow: "22:30-23:30"
+      PubliclyAccessible: false
+      StorageType: gp2
+      Tags: 
+        - Key: Name
+          Value: !Join ['-', [!Ref "AWS::StackName", !Ref "DBName" ]]
+      UseDefaultProcessorFeatures: true
+      VPCSecurityGroups: 
+        - !ImportValue DBSG
+      DBSubnetGroupName: !Ref DBSubnetGroup
+
+Outputs:
+  RDSHost:
+    Description: The URL of the RDS
+    Value: !GetAtt [RDS, Endpoint.Address]
+    Export:
+      Name: DB-HOST
+
+  RDSName:
+    Description: The URL of the RDS
+    Value: !Ref InitialDBName
+    Export:
+      Name: DB-NAME
+
+  RDSUser:
+    Description: The URL of the RDS
+    Value: !Ref MasterUsername
+    Export:
+      Name: DB-USER
+
+  RDSPasswd:
+    Description: The URL of the RDS
+    Value: !Ref MasterUserPassword
+    Export:
+      Name: DB-PASSWD

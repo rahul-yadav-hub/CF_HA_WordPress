@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Resources:  
+  LBSecurityGroup: # Allow HTTP and HTTPS Traffic
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: HTTP traffic from public world
+      VpcId: !ImportValue VPCID
+      Tags:
+      - Key: Name
+        Value: !Sub ${AWS::StackName}-LB-SG
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        FromPort: 443 
+        IpProtocol: tcp
+        ToPort: 443
+      - CidrIp: 0.0.0.0/0
+        FromPort: 80
+        IpProtocol: tcp
+        ToPort: 80
+      
+
+  AppSecurityGroup:
+    DependsOn: LBSecurityGroup
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: HTTP traffic from LB
+      VpcId: !ImportValue VPCID
+      Tags:
+      - Key: Name
+        Value: !Sub ${AWS::StackName}-App-SG
+      SecurityGroupIngress:
+      - SourceSecurityGroupId: !GetAtt [ LBSecurityGroup, GroupId ]
+        FromPort: 80
+        IpProtocol: tcp
+        ToPort: 80
+
+  DBSecurityGroup:
+    DependsOn: AppSecurityGroup
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow traffic from App
+      VpcId: !ImportValue VPCID
+      Tags:
+      - Key: Name
+        Value: !Sub ${AWS::StackName}-RDS-SG
+      SecurityGroupIngress:
+      - SourceSecurityGroupId: !GetAtt [ AppSecurityGroup, GroupId ]
+        FromPort: 3306
+        IpProtocol: tcp
+        ToPort: 3306
+
+Outputs:
+  LBSG:
+    Description: SG name of LB
+    Value: !Ref LBSecurityGroup
+    Export:
+      Name: LBSG
+  
+  AppSG:
+    Description: SG name of App
+    Value: !Ref AppSecurityGroup
+    Export:
+      Name: AppSG
+    
+  DBSG:
+    Description: SG name of DB
+    Value: !Ref DBSecurityGroup
+    Export:
+      Name: DBSG

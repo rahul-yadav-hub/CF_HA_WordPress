@@ -1,0 +1,261 @@
+
+
+# PrerequisiteS:
+#              - Application should return 200 Status Code
+#              - You need to provide Certificate ARN for HTTPS listener
+
+AWSTemplateFormatVersion: "2010-09-09"
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Load Balancer Configuration"
+        Parameters:
+          - ELBName
+          - CertificateARN
+      - Label:
+          default: "ASG Configuration"
+        Parameters:
+          - AutoScalingGroupName
+          - MinSize
+          - MaxSize
+          - CooldownPeriod
+          - GracePeriod
+      - Label:
+          default: "Launch Configuration"
+        Parameters:
+          - LaunchConfName
+          - KeyName
+          - AMI
+          - InstanceType
+      - Label:
+          default: "Target Group Configuration"
+        Parameters:
+          - TGName
+          - HealthCheckPath
+          - HealthCheckProtocol
+          - InstancePort
+          - InstanceProtocol
+
+    ParameterLabels:
+      ELBName:
+        default: "ELB Name"
+      CertificateARN:
+        default: "Certificate ARN"
+      AutoScalingGroupName:
+        default: "ASG Name"
+      MinSize:
+        default: "Minimum Capacity"
+      MaxSize:
+        default: "Maximum Capacity"
+      CooldownPeriod:
+        default: "Cooldown Period"
+      GracePeriod:
+        default: "Grace Period"
+      LaunchConfName:
+        default: "Launch Configuartion Name"
+      KeyName:
+        default: "Key Pair Name"
+      AMI:
+        default: "AMI ID"
+      InstanceType:
+        default: "Instance Type"
+      TGName:
+        default: "Target Group Name"
+      HealthCheckPath:
+        default: "Health Check Path"
+      HealthCheckProtocol:
+        default: "Health Check Protocol"
+      InstancePort:
+        default: "Instance Port"
+      InstanceProtocol:
+        default: "Instance Protocol"
+
+
+Parameters:
+  ELBName: 
+    Description: Name of the Load Balancer
+    Type: String
+  CertificateARN:
+    Description: Certificate ARN for HTTPS Listener
+    Type: String
+  AutoScalingGroupName: 
+    Description: Name of the ASG
+    Type: String
+  MinSize: 
+    Description: Minimum Capacity Size
+    Type: String
+  MaxSize:
+    Description: Maximum Capacity Size
+    Type: String
+  CooldownPeriod: 
+    Description: Cooldown Period for Scaling
+    Type: String
+  GracePeriod: 
+    Description: Grace Period for Scaling
+    Type: String
+  LaunchConfName: #
+    Description: Name of the Launch Configuration
+    Type: String
+  KeyName: #
+    Description: EC2 Key Pair Name
+    Type: String
+  AMI: #
+    Description: AMI ID to create lauch configuartion
+    Type: String
+  InstanceType: #
+    Description: Instance Type
+    Type: String
+  TGName: #
+    Description: Name of the Target Group
+    Type: String
+  HealthCheckPath: #
+    Description: Health Check Path in target group
+    Type: String
+  HealthCheckProtocol: #
+    Description: Health Check Protocol in target group
+    Type: String
+  InstancePort:
+    Description: Port on which app is running in the instance
+    Type: String
+  InstanceProtocol:
+    Description: Protocol on which app is running in the instance
+    Type: String
+
+
+Resources:
+  AppASG: 
+    DependsOn:
+    - AppLaunchConfig
+    - ApplicationLoadBalancer
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: !Join ['-', [!Ref "AWS::StackName", !Ref "AutoScalingGroupName" ]]
+      LaunchConfigurationName: !Ref "AppLaunchConfig"
+      MinSize: !Ref MinSize
+      MaxSize: !Ref MaxSize
+      Cooldown: !Ref CooldownPeriod
+      HealthCheckGracePeriod: !Ref GracePeriod
+      HealthCheckType: ELB
+      TargetGroupARNs:
+        - !Ref TargetGroup
+      VPCZoneIdentifier:
+        - !ImportValue PrivateSubnetID1
+        - !ImportValue PrivateSubnetID2
+      Tags:
+      - Key: Name
+        PropagateAtLaunch: true
+        Value: !Join ['-', [!Ref "AWS::StackName", !Ref "AutoScalingGroupName" ]]
+
+  ScalingPolicy: #Based on AvgCPU Utilization
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties: 
+      AutoScalingGroupName: !Join ['-', [!Ref "AWS::StackName", !Ref "AutoScalingGroupName" ]]
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration: 
+          DisableScaleIn: false
+          PredefinedMetricSpecification: 
+            PredefinedMetricType: ASGAverageCPUUtilization
+          TargetValue: 50
+
+
+
+  AppLaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      LaunchConfigurationName: !Join ['-', [!Ref "AWS::StackName", !Ref "LaunchConfName" ]]
+      KeyName: !Ref "KeyName"
+      ImageId: !Ref "AMI"
+      SecurityGroups: [!ImportValue "AppSG"]
+      InstanceType: !Ref "InstanceType"
+      UserData: # Don't use in CI-CD
+        Fn::Base64:
+          Fn::Sub:
+          - |
+            #!/bin/bash  
+            sudo git clone https://github.com/rahul-yadav-hub/WordPress-CI-CD-AWS.git
+            sudo mv WordPress-CI-CD-AWS/* /var/www/rahul-wp.squareops.co.in/
+            DB_NAME=${DB_NAME}
+            DB_HOST=${DB_HOST}
+            DB_USER=${DB_USER}
+            DB_PASSWD=${DB_PASSWD}
+            sudo sed -i 's/database_name_here/'$DB_NAME'/' /var/www/rahul-wp.squareops.co.in/wp-config.php
+            sudo sed -i 's/username_here/'$DB_USER'/' /var/www/rahul-wp.squareops.co.in/wp-config.php
+            sudo sed -i 's/password_here/'$DB_PASSWD'/' /var/www/rahul-wp.squareops.co.in/wp-config.php
+            sudo sed -i 's/localhost/'$DB_HOST'/' /var/www/rahul-wp.squareops.co.in/wp-config.php
+          - DB_NAME: !ImportValue DB-NAME
+            DB_HOST: !ImportValue DB-HOST
+            DB_USER: !ImportValue DB-USER
+            DB_PASSWD: !ImportValue DB-PASSWD
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties: 
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckPort: 80
+      HealthCheckProtocol: !Ref HealthCheckProtocol
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      IpAddressType: ipv4
+      Port: 80
+      Protocol: HTTP
+      Tags:
+      - Key: Name
+        Value: !Join ['-', [!Ref "AWS::StackName", !Ref "TGName" ]]
+      TargetType: instance
+      UnhealthyThresholdCount: 5
+      VpcId: !ImportValue VPCID
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn: TargetGroup
+    Properties:
+      Name: !Join ['-', [!Ref "AWS::StackName", !Ref "ELBName" ]]
+      SecurityGroups: [!ImportValue "LBSG"]
+      Subnets: 
+        - !ImportValue PublicSubnetID1
+        - !ImportValue PublicSubnetID2
+      Type: application
+      Scheme: internet-facing
+
+  ALBListenerHTTP: # Redirect traffic to HTTPS or 443
+    DependsOn: ApplicationLoadBalancer
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      DefaultActions:
+        - Type: "redirect"
+          RedirectConfig: 
+              Protocol: "HTTPS"
+              Port: 443
+              Host: "#{host}"
+              Path: "/#{path}"
+              Query: "#{query}"
+              StatusCode: "HTTP_301"
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: "HTTP"
+
+  ALBListenerHTTPS:
+    DependsOn: ApplicationLoadBalancer
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties: 
+      Certificates: 
+        -  CertificateArn: !Ref CertificateARN
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+
+
+
+Outputs:
+  URL:
+    Description: The URL of the website
+    Value: !Join ["", ["http://", !GetAtt [ApplicationLoadBalancer, DNSName]]]
+    Export:
+      Name: AppURL
