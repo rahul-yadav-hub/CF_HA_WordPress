@@ -14,3 +14,19 @@ This CloudFormation template creates security groups.
 #### SG for Load Balancer
 #### SG for Database
 #### Sg for Application
+## Data Layer
+This CloudFormation template creates a RDS with MySQL Engine.
+### Components
+- Subnet Group
+- RDS
+## Compute Layer
+This CloudFormation template creates a ASG and LB to deploy the application.
+### Components
+- Launch Configuration
+- Auto Scaling Group
+- Scaling Policy
+- Target Group
+- Load Balancer
+- HTTP Listener
+- HTTPS listener
+
