@@ -35,11 +35,20 @@ This CloudFormation template creates a ASG and LB to deploy the application.
 ## Prerequisites
 - Must have an AMI with Nginx & Php-Fpm configured
 - Application should return 200 Status Code on some path for health checks
+- Must have a registered domain
 - Must have certificate ARN of a Domain
+## Usage
+Clone the repository and use the yaml files to create stack in the following order:-
+- Networking Layer
+- Security Layer
+- Data Layer
+- Compute Layer
+Fill all the parameter value and create stack.
 ## Suggested Improvements
 - Add Backup for media content using S3 Bucket.
 - Add a Bastion or VPN server to administer application instances securely.
 - Add Secret Manager or SSM Paramtere store to store RDS credentials.
+- Add domain mapping for LB in Route53.
 
 
 
