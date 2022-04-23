@@ -29,6 +29,7 @@ Metadata:
           - KeyName
           - AMI
           - InstanceType
+          - DOMAIN
       - Label:
           default: "Target Group Configuration"
         Parameters:
@@ -61,6 +62,8 @@ Metadata:
         default: "AMI ID"
       InstanceType:
         default: "Instance Type"
+      DOMAIN:
+        default: "Website Domain Name"
       TGName:
         default: "Target Group Name"
       HealthCheckPath:
@@ -106,6 +109,9 @@ Parameters:
     Type: String
   InstanceType: #
     Description: Instance Type
+    Type: String
+  DOMAIN: #
+    Description: Website Domain Name # to replace in wp-config.php file
     Type: String
   TGName: #
     Description: Name of the Target Group
@@ -181,14 +187,17 @@ Resources:
             DB_HOST=${DB_HOST}
             DB_USER=${DB_USER}
             DB_PASSWD=${DB_PASSWD}
+            DOMAIN=${DOMAIN}
             sudo sed -i 's/database_name_here/'$DB_NAME'/' /var/www/wordpress/wp-config.php
             sudo sed -i 's/username_here/'$DB_USER'/' /var/www/wordpress/wp-config.php
             sudo sed -i 's/password_here/'$DB_PASSWD'/' /var/www/wordpress/wp-config.php
             sudo sed -i 's/localhost/'$DB_HOST'/' /var/www/wordpress/wp-config.php
+            sudo sed -i 's/your_domain_here/'$DOMAIN'/' /var/www/wordpress/wp-config.php
           - DB_NAME: !ImportValue DB-NAME
             DB_HOST: !ImportValue DB-HOST
             DB_USER: !ImportValue DB-USER
             DB_PASSWD: !ImportValue DB-PASSWD
+            DOMAIN: !Ref DOMAIN
 
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
