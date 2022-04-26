@@ -181,8 +181,8 @@ Resources:
           - |
             #!/bin/bash  
             sudo git clone https://github.com/rahul-yadav-hub/WordPress-CI-CD-AWS.git
-            sudo mkdir /var/www/wordpress
             sudo mv WordPress-CI-CD-AWS/* /var/www/wordpress
+            sudo rm -rf WordPress-CI-CD-AWS
             DB_NAME=${DB_NAME}
             DB_HOST=${DB_HOST}
             DB_USER=${DB_USER}
